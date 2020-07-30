@@ -8,8 +8,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Doctrine\Common\Persistence\ObjectManager;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
+use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use App\Entity\Articls;
 use App\Repository\ArticlsRepository;
+use App\Form\ArticleType;
 
 class BlogController extends AbstractController
 {
@@ -41,34 +43,40 @@ class BlogController extends AbstractController
 
     /**
      * @Route("/blog/new", name="blog_create")
+     * @Route("/blog/{id}/edit", name="blog_edit")
      */
-    public function create(Request $request) //ObjectManager $manager
+    public function form(Articls $article = null, Request $request)
     {
-        $article = new Articls();
+        if (!$article) {
+            $article = new Articls();
+        }
+        // $form = $this->createFormBuilder($article)
+        //              ->add('title')
+        //              ->add('content')
+        //              ->add('image')
+        //             //  ->add('save', SubmitType::class, [
+        //             //     'attr' => [
+        //             //         'placeholder' => "Enregistrer",
+        //             //     ]
+        //             //  ])
+        //              ->getForm();
+        $form = $this->createForm(ArticleType::class, $article);
+        $form->handleRequest($request);
 
-        $form = $this->createFormBuilder($article)
-                     ->add('title', TextType::class, [
-                        'attr' => [
-                            'placeholder' => "Titre d'article",
-                            // 'class' => "form-control"
-                        ]
-                     ])
-                     ->add('content', TextareaType::class, [
-                        'attr' => [
-                            'placeholder' => "Contenu d'article",
-                            // 'class' => "form-control"
-                        ]
-                     ])
-                     ->add('image', TextType::class, [
-                        'attr' => [
-                            'placeholder' => "Image d'article",
-                            // 'class' => "form-control"
-                        ]
-                     ])
-                     ->getForm();
-        
+        // dump($article);
+        $manager = $this->getDoctrine()->getManager();
+        if ($form->isSubmitted() && $form->isValid()) {
+            if (!$article->getId()) {
+                $article->setCreatedAt(new \DateTime());
+            }
+            $manager->persist($article);
+            $manager->flush();
+
+            return $this->redirectToRoute('blog_show', ['id' => $article->getId() ]);
+        }
         return $this->render('blog/create.html.twig', [
-            'formArticle' => $form->createView()
+            'formArticle' => $form->createView(),
+            'editMode'  => $article->getId() !== null
         ]);
 
         
